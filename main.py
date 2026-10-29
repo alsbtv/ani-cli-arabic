@@ -1,10 +1,5 @@
 from flask import Flask, jsonify, request
-import sys
-import os
-
-# إضافة مجلد src إلى مسار بايثون لكي نتمكن من استيراد api.py
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
-from api import AnimeAPI
+from src.api import AnimeAPI
 
 app = Flask(__name__)
 scraper = AnimeAPI()
