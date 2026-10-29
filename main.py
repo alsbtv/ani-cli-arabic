@@ -1,14 +1,43 @@
+from flask import Flask, jsonify, request
 import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# إضافة مجلد src إلى مسار بايثون لكي نتمكن من استيراد api.py
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+from api import AnimeAPI
 
-from src.app import main
-from src.utils import is_bundled
-from src.updater import check_for_updates
+app = Flask(__name__)
+scraper = AnimeAPI()
 
-if __name__ == "__main__":
-    if is_bundled():
-        check_for_updates()
-    
-    main()
+@app.route('/latest')
+def latest():
+    try:
+        episodes = scraper.get_latest_episodes(limit=20)
+        results = []
+        for ep in episodes:
+            results.append({
+                "title": ep["title"],
+                "poster": ep["thumbnail"],
+                "url": ep["slug"], 
+                "episode": ep["ep_num"]
+            })
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/stream/<slug>/<int:ep_num>')
+def stream(slug, ep_num):
+    try:
+        servers = scraper.get_streaming_servers(slug, str(ep_num))
+        if servers:
+            qualities = [q.__dict__ for q in servers.get("Qualities", [])]
+            return jsonify({
+                "qualities": qualities, 
+                "direct": servers.get("DirectStreams", {})
+            })
+        return jsonify({"error": "No streams found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
